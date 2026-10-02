@@ -1,5 +1,6 @@
 /* ===== Shared behaviour: nav, language switch, tabs, journey filter, events scroll ===== */
 document.addEventListener('DOMContentLoaded', () => {
+  initAnnouncement();   // before the language switch, so the popup text gets translated too
   initNavToggle();
   initLanguageSwitch();
   initTabs();
@@ -286,4 +287,70 @@ function initBackToTop() {
   const update = () => btn.classList.toggle('show', window.scrollY > 500);
   update();
   window.addEventListener('scroll', update, { passive: true });
+}
+
+/* ---- Announcement popup ----
+   Shown once per browser session on whichever page the visitor opens first.
+   Each notice can carry an `until` date (YYYY-MM-DD, inclusive); once that day
+   has passed it drops out automatically. Add or remove notices here. */
+const ANNOUNCEMENTS = [
+  {
+    tag: 'Upcoming',
+    title: 'Prakruthi Sushrusha – Sushrusha Vanam Campaign',
+    date: '14, 15 & 16 October 2026',
+    text: 'Join us in planting and nurturing a Sushrusha Vanam – a green offering of seva to Prakruthi.',
+    link: { href: 'prakruthi-sushrusha.html', label: 'Join the Campaign' },
+    until: '2026-10-16'
+  },
+  {
+    tag: 'Ongoing',
+    title: 'Shiva Bana Lingams from the Narmada River',
+    text: 'We are collecting sacred Shiva Bana Lingams from the holy Narmada River.',
+    link: { href: 'tel:+919494546644', label: 'Enquire Now' }
+  }
+];
+
+function initAnnouncement() {
+  const today = new Date();
+  const todayKey = today.getFullYear() + '-' +
+    String(today.getMonth() + 1).padStart(2, '0') + '-' +
+    String(today.getDate()).padStart(2, '0');
+  const active = ANNOUNCEMENTS.filter(a => !a.until || todayKey <= a.until);
+  if (!active.length) return;
+
+  try {
+    if (sessionStorage.getItem('announcement-seen')) return;
+    sessionStorage.setItem('announcement-seen', '1');
+  } catch (e) { /* storage blocked - just show it */ }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'announce-overlay';
+  overlay.innerHTML =
+    '<div class="announce-box" role="dialog" aria-modal="true" aria-labelledby="announce-heading">' +
+      '<button type="button" class="announce-close" aria-label="Close">&times;</button>' +
+      '<h2 id="announce-heading">Announcements</h2>' +
+      active.map(a =>
+        '<div class="announce-item">' +
+          '<span class="announce-tag">' + a.tag + '</span>' +
+          '<h3>' + a.title + '</h3>' +
+          (a.date ? '<p class="announce-date">&#128197; <span>' + a.date + '</span></p>' : '') +
+          '<p>' + a.text + '</p>' +
+          (a.link ? '<a class="btn" href="' + a.link.href + '">' + a.link.label + '</a>' : '') +
+        '</div>'
+      ).join('') +
+    '</div>';
+  document.body.appendChild(overlay);
+  document.body.classList.add('announce-open');
+
+  const closeBtn = overlay.querySelector('.announce-close');
+  const close = () => {
+    overlay.remove();
+    document.body.classList.remove('announce-open');
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  closeBtn.addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', onKey);
+  closeBtn.focus();
 }
